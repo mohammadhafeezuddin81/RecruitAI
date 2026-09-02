@@ -51,7 +51,7 @@ export default function SetupPage() {
             </h1>
             
             <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                Antriview conducts realistic mock interviews, analyzes your resume, and provides brutal, data-driven feedback to help you get hired.
+                RecruitAI conducts realistic mock interviews, analyzes your resume, and provides brutal, data-driven feedback to help you get hired.
             </p>
 
             <SignInButton mode="modal">
@@ -92,10 +92,9 @@ export default function SetupPage() {
 
         {/* Footer */}
         <footer className="border-t border-slate-800 bg-slate-950 py-12 text-center relative z-10">
-            <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
-                Made with <Heart className="w-4 h-4 text-red-500 fill-red-500 animate-pulse" /> by <span className="text-white font-semibold">Shiva Balaji Kontham</span>
+            <p className="text-slate-500 text-sm">
+                RecruitAI — The Agentic AI Interview Platform
             </p>
-            <p className="text-slate-600 text-xs mt-2">Built for Eightfold AI Agent Hackathon</p>
         </footer>
     </div>
   );

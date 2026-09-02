@@ -1,112 +1,47 @@
-import chromadb
-from chromadb.utils import embedding_functions
 import os
-import time  # <--- REQUIRED FOR RATE LIMITING
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-import google.generativeai as genai
-from dotenv import load_dotenv
+from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-load_dotenv()
+api_key = os.environ.get("GOOGLE_API_KEY", "DUMMY_KEY_FOR_INIT")
 
-# Initialize ChromaDB (Local Vector Database)
-chroma_client = chromadb.Client()
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001",
+    google_api_key=api_key
+)
 
-# Create a collection (like a table) for the interview context
-class GeminiEmbeddingFunction(chromadb.EmbeddingFunction):
-    def __call__(self, input: list[str]) -> list[list[float]]:
-        model = "models/embedding-001"
-        title = "Resume Embeddings"
-        
-        embeddings = []
-        
-        print(f"⚡ Generating embeddings for {len(input)} chunks...")
-        
-        for i, text in enumerate(input):
-            try:
-                # --- RATE LIMIT FIX ---
-                # We sleep for 2 seconds between calls to avoid Google 429 Errors
-                if i > 0: 
-                    time.sleep(2.0) 
-                
-                response = genai.embed_content(
-                    model=model, 
-                    content=text, 
-                    task_type="retrieval_document", 
-                    title=title
-                )
-                embeddings.append(response['embedding'])
-                print(f"   - Chunk {i+1}/{len(input)} embedded.")
-                
-            except Exception as e:
-                print(f"⚠️ Error embedding chunk {i}: {e}")
-                # Fallback: If API fails, add a dummy zero-vector so the app doesn't crash
-                # (Embedding-001 has 768 dimensions)
-                embeddings.append([0.0] * 768)
+_vectorstore = Chroma(
+    collection_name="recruitai_documents",
+    embedding_function=embeddings,
+    persist_directory="./chroma_db",
+)
 
-        return embeddings
 
-# Initialize Collection
-def get_collection():
-    # Helper to get collection safely
-    return chroma_client.get_or_create_collection(
-        name="interview_context", 
-        embedding_function=GeminiEmbeddingFunction()
-    )
-
-def ingest_text(text: str, metadata: dict):
-    """
-    1. Chunks the text (Split into smaller pieces).
-    2. Creates Word Embeddings with Rate Limiting.
-    3. Stores in Vector DB.
-    """
-    # Clear previous session data to prevent duplicates
-    try:
-        chroma_client.delete_collection("interview_context")
-    except:
-        pass
-        
-    new_collection = get_collection()
-    
-    # Split text intelligently
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = text_splitter.split_text(text)
-    
-    if not chunks:
-        print("⚠️ No text to ingest.")
+def add_documents(texts: list[str], metadatas: list[dict]):
+    """Adds chunked text segments with attached metadata into the Chroma collection."""
+    if not texts:
         return
+    _vectorstore.add_texts(texts=texts, metadatas=metadatas)
 
-    print(f"📂 Splitting text into {len(chunks)} chunks...")
 
-    # Add to DB
-    new_collection.add(
-        documents=chunks,
-        metadatas=[metadata for _ in chunks],
-        ids=[f"id_{i}" for i in range(len(chunks))]
+def get_resume_retriever(session_id: str, k: int = 3):
+    """Filtered to only this specific session's resume/JD chunks."""
+    return _vectorstore.as_retriever(
+        search_kwargs={"k": k, "filter": {"session_id": session_id}}
     )
-    print(f"✅ RAG Engine: Successfully ingested {len(chunks)} vectors.")
 
-def retrieve_context(query: str, n_results=2):
-    """
-    Semantic Search: Finds the most relevant part of the resume/JD 
-    based on what the user just said.
-    """
-    try:
-        collection = get_collection()
-        
-        # We assume the collection exists and has data
-        if collection.count() == 0:
-            return ["No context available."]
 
-        results = collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
-        
-        # Extract documents
-        if results and results['documents']:
-            return results['documents'][0]
-        return ["No relevant context found."]
-        
-    except Exception as e:
-        print(f"Retrieval Error: {e}")
-        return ["Error retrieving context."]
+def get_rubric_retriever(role_category: str = "general", k: int = 4):
+    """Filtered to the relevant rubric category, not the whole collection."""
+    return _vectorstore.as_retriever(
+        search_kwargs={"k": k, "filter": {"role_category": role_category}}
+    )
+
+
+def retrieve_context(query: str, session_id: str = None, k: int = 3) -> list[str]:
+    """Helper method for semantic search across candidate context."""
+    if session_id:
+        retriever = get_resume_retriever(session_id, k=k)
+        docs = retriever.invoke(query)
+    else:
+        docs = _vectorstore.similarity_search(query, k=k)
+    return [doc.page_content for doc in docs]

@@ -1,24 +1,79 @@
-# --- GLOBAL ---
+# ==========================================
+# RecruitAI — Global Git Ignore Configuration
+# ==========================================
+
+# Local Secrets & Private Archive Folders
+_local_secrets/
+_local_archive/
+_backup/
+*.private
+
+# OS Generated Files
 .DS_Store
-*.log
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# --- PYTHON BACKEND ---
-backend/venv/
-backend/__pycache__/
-backend/*.pyc
-backend/.env
-backend/serviceAccountKey.json   
-backend/antriview_db.json        
+# Environment & Secrets (NEVER COMMIT CREDENTIALS)
+.env
+.env.*
+!.env.example
+*.local
+serviceAccountKey.json
+*.pem
+*.key
+*.credential
+*.credentials
 
-# --- NEXT.JS FRONTEND ---
-frontend/node_modules/
-frontend/.next/
-frontend/.env.local              
-frontend/.env
-frontend/out/
-frontend/build/
-frontend/dist/
+# Node / Frontend / Gateway
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+.next/
+out/
+build/
+dist/
+.turbo
+.eslintcache
+coverage/
+.nyc_output/
 
-# --- IDE SETTINGS ---
-.vscode/
+# Python / Backend
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Local Vector DB & LangChain Cache
+chroma_db/
+.chroma/
+.langchain_cache.db
+*.sqlite3
+*.db
+
+# IDE & Editor Files
 .idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo

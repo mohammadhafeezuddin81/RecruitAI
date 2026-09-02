@@ -1,1 +1,12 @@
+# Python & Backend Specific Ignores
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
 serviceAccountKey.json
+chroma_db/
+.langchain_cache.db
+.pytest_cache/
+.coverage

@@ -30,7 +30,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("antriview_data");
+      const saved = localStorage.getItem("recruitai_data");
       if (saved) {
         try {
           const p = JSON.parse(saved);
@@ -49,7 +49,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       const data = { jobDescription, interviewType, interactionMode, extractedData, transcript, feedback };
-      localStorage.setItem("antriview_data", JSON.stringify(data));
+      localStorage.setItem("recruitai_data", JSON.stringify(data));
     }
   }, [jobDescription, interviewType, interactionMode, extractedData, transcript, feedback, isLoaded]);
 
@@ -58,7 +58,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     setExtractedData(null);
     setTranscript([]);
     setFeedback(null);
-    localStorage.removeItem("antriview_data");
+    localStorage.removeItem("recruitai_data");
   };
 
   return (

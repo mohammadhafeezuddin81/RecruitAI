@@ -10,8 +10,8 @@ export default function Navbar() {
     <nav className="w-full border-b border-slate-800 bg-slate-950/50 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center font-bold text-white">A</div>
-            <span className="text-xl font-bold text-white">Antriview</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center font-bold text-white">R</div>
+            <span className="text-xl font-bold text-white">RecruitAI</span>
         </div>
 
         <div className="flex items-center gap-4">

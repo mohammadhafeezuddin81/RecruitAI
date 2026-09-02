@@ -7,7 +7,7 @@ import Navbar from "../components/Navbar";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = { title: "Antriview", description: "AI Interview Coach" };
+export const metadata: Metadata = { title: "RecruitAI", description: "Agentic AI Interview Partner" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

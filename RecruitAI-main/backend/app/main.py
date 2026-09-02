@@ -1,119 +1,162 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+import os
+import tempfile
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
-from typing import Optional, List, Dict
-import io
-import pypdf
-import json
-import re
 
-from app.services.rag_engine import ingest_text
-from app.agents.interviewer import generate_next_turn
-from app.agents.observer import observe_user_state
-from app.services.gemini import generate_response
-from app.services.extractor import extract_candidate_data
-from app.services.database import save_session, get_analytics, update_profile
+from app.agents.orchestrator import orchestrator_graph
+from app.services.database import (
+    create_session,
+    load_session_state,
+    save_session_state,
+    get_analytics,
+    update_profile,
+)
+from app.services.ingestion import ingest_resume, ingest_job_description
+from app.services.llm_config import resilient_llm  # ensures cache/tracing init on startup
 
-app = FastAPI(title="Antriview Backend")
+app = FastAPI(
+    title="RecruitAI Agent Service",
+    description="Multi-agent orchestrator service for intelligent interview simulations powered by LangGraph, LangChain, and Gemini.",
+    version="2.0.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-def home():
-    return {"status": "Online"}
 
-# --- DASHBOARD ---
+class StartInterviewRequest(BaseModel):
+    userId: str
+    jobDescription: str
+    mode: str = "technical"
+
+
+class AnswerRequest(BaseModel):
+    answer: str
+    silence_ms: Optional[int] = 0
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "ok", "service": "RecruitAI Backend"}
+
+
+@app.get("/")
+async def root():
+    return {
+        "name": "RecruitAI Agent Service",
+        "status": "online",
+        "version": "2.0.0",
+    }
+
+
+@app.post("/interview/start")
+async def start_interview(payload: StartInterviewRequest):
+    """Initializes a new interview session and chunks the job description into vector storage."""
+    try:
+        session_id = create_session(
+            user_id=payload.userId,
+            job_description=payload.jobDescription,
+            mode=payload.mode,
+        )
+        ingest_job_description(payload.jobDescription, session_id)
+        return {
+            "sessionId": session_id,
+            "firstQuestion": "Hello and welcome to RecruitAI! To get started, could you please give a brief introduction of yourself and your background?",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start interview: {str(e)}")
+
+
+@app.post("/interview/{session_id}/resume")
+async def upload_resume(session_id: str, file: UploadFile = File(...)):
+    """Uploads and indexes candidate resume PDF with session-filtered metadata."""
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+
+        chunk_count = ingest_resume(tmp_path, user_id="candidate", session_id=session_id)
+        return {
+            "sessionId": session_id,
+            "chunksIndexed": chunk_count,
+            "status": "success",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to ingest resume: {str(e)}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+@app.post("/interview/{session_id}/answer")
+async def submit_answer(session_id: str, payload: AnswerRequest):
+    """Processes candidate utterance through Observer -> Interviewer -> (on close) Evaluator LangGraph."""
+    try:
+        state = load_session_state(session_id)
+        state["session_id"] = session_id
+        state["latest_user_turn"] = payload.answer
+        state["silence_duration_ms"] = payload.silence_ms or 0
+
+        # Run master orchestrator graph
+        result_state = orchestrator_graph.invoke(state)
+        save_session_state(session_id, result_state)
+
+        return {
+            "phase": result_state.get("current_phase"),
+            "action": result_state.get("next_action"),
+            "sessionComplete": result_state.get("session_complete", False),
+            "evaluation": result_state.get("evaluation"),
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Turn processing error: {str(e)}")
+
+
+# --- Backward Compatibility Endpoints for Dashboard and Frontend UI ---
 @app.get("/dashboard/{user_id}")
-def get_dashboard(user_id: str):
+async def get_dashboard(user_id: str):
     return get_analytics(user_id)
 
-# --- CONTEXT (Now takes user_id) ---
+
 @app.post("/process-context")
 async def process_context(
-    user_id: str = Form(...), 
+    user_id: str = Form(...),
     job_description: str = Form(...),
     file: UploadFile = File(None)
 ):
-    resume_text = "NO_RESUME"
-    if file:
-        content = await file.read()
-        pdf_reader = pypdf.PdfReader(io.BytesIO(content))
-        resume_text = ""
-        for page in pdf_reader.pages:
-            resume_text += page.extract_text() + "\n"
-            
-    # RAG Ingestion
-    full_text = f"JOB DESCRIPTION:\n{job_description}\n\nRESUME:\n{resume_text}"
-    ingest_text(full_text, metadata={"source": "upload"})
-    
-    # Extract Data
-    data = await extract_candidate_data(resume_text, job_description)
-    
-    # Save Profile to DB
-    if "candidate_info" in data:
-        update_profile(user_id, data["candidate_info"])
-        
-    return data
+    session_id = create_session(user_id=user_id, job_description=job_description, mode="standard")
+    ingest_job_description(job_description, session_id)
+    chunks = 0
+    if file and file.filename.endswith(".pdf"):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        try:
+            chunks = ingest_resume(tmp_path, user_id=user_id, session_id=session_id)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
-# --- CHAT TURN ---
-class ChatTurnRequest(BaseModel):
-    history: List[Dict[str, str]]
-    last_user_input: str
-    job_description: str
+    return {
+        "sessionId": session_id,
+        "chunksIndexed": chunks,
+        "status": "ready"
+    }
 
-@app.post("/chat/next-turn")
-async def chat_next_turn(request: ChatTurnRequest):
-    state = await observe_user_state(request.last_user_input)
-    next_response = await generate_next_turn(request.history, request.last_user_input, request.job_description)
-    return {"response": next_response, "state": state}
-
-# --- FEEDBACK (Now takes user_id and job_role) ---
-class FeedbackRequest(BaseModel):
-    user_id: str
-    job_role: str
-    transcript: list
-
-@app.post("/generate-feedback")
-async def generate_feedback(request: FeedbackRequest):
-    if not request.transcript:
-        return {"overall_score": 0}
-
-    conversation_text = "\n".join([f"{msg.get('role')}: {msg.get('content')}" for msg in request.transcript])
-    
-    prompt = f"""
-    Act as a strict Interview Coach. Review this transcript for the role of: {request.job_role}
-    TRANSCRIPT: {conversation_text}
-    
-    Output JSON ONLY:
-    {{
-        "overall_score": (int 1-10),
-        "technical": {{ "score": (int), "feedback": "string" }},
-        "communication": {{ "score": (int), "feedback": "string" }},
-        "resume_fit": {{ "score": (int), "feedback": "string" }},
-        "presentation": {{ "score": (int), "feedback": "string" }},
-        "improvements": ["tip 1", "tip 2", "tip 3"]
-    }}
-    """
-    response = await generate_response(prompt)
-    
-    try:
-        match = re.search(r"\{.*\}", response, re.DOTALL)
-        if match:
-            feedback_json = json.loads(match.group(0))
-            save_session(request.user_id, request.transcript, feedback_json, request.job_role)
-            return feedback_json
-        else:
-            raise ValueError("No JSON")
-    except Exception as e:
-        print(f"Error: {e}")
-        return {"overall_score": 0}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
