@@ -1,0 +1,13 @@
+# Core API Framework
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-multipart
+google-generativeai
+python-dotenv
+pydantic>=2.10.0
+# RAG & Vector DB
+chromadb
+langchain-text-splitters
+langchain-google-genai
+# PDF Parsing
+pypdf

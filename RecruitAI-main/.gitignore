@@ -1,0 +1,24 @@
+# --- GLOBAL ---
+.DS_Store
+*.log
+
+# --- PYTHON BACKEND ---
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/serviceAccountKey.json   
+backend/antriview_db.json        
+
+# --- NEXT.JS FRONTEND ---
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local              
+frontend/.env
+frontend/out/
+frontend/build/
+frontend/dist/
+
+# --- IDE SETTINGS ---
+.vscode/
+.idea/
