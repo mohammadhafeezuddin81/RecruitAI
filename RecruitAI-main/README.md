@@ -7,152 +7,198 @@
 [![Supabase](https://img.shields.io/badge/Supabase-pgvector-3ECF8E?logo=supabase)](https://supabase.com/)
 [![Express Gateway](https://img.shields.io/badge/Express-API_Gateway-000000?logo=express)](https://expressjs.com/)
 
-**RecruitAI** is an autonomous, multi-agent AI technical interviewing platform built to simulate high-pressure, realistic coding and behavioral job interviews.
+**RecruitAI** is a goal-driven, autonomous multi-agent AI technical interviewing platform built to simulate high-pressure, realistic coding and behavioral job interviews. 
 
 Unlike simple single-prompt chat scripts, RecruitAI executes a **Graph-of-Graphs orchestration workflow** using **LangGraph**, combining real-time speech perception (*Observer Agent*), an 8-phase adaptive interview Finite State Machine (*Technical Interviewer Agent*), and automated rubric evaluation (*Evaluator Agent*).
 
 ---
 
-## 📐 3D Cloud Architecture Diagram
+## 🏛️ High-Level System Architecture (HLD)
 
-![RecruitAI 3D Architecture](docs/architecture-diagram.svg)
+```
+====================================================================================================
+                               RECRUITAI HIGH-LEVEL ARCHITECTURE (HLD)
+====================================================================================================
 
----
-
-## 📸 Core Features & Capabilities
-
-- 🧠 **Multi-Agent LangGraph Pipeline**: Stateful, non-linear interview graph supervising 3 specialized sub-agents.
-- 🎯 **8-Phase Adaptive Protocol**: Seamlessly transitions through Introduction, Screening, Adaptation (offering hints on candidate hesitation), Probing Follow-up, Resume Deep Dive, Scenario Troubleshooting, Interim Feedback, and Closing.
-- ⚡ **Session-Scoped RAG Vector Search**: Indexes candidate PDF resumes and job descriptions into Supabase `pgvector` with Gemini `text-embedding-004` embeddings.
-- 🎙️ **Dual Voice & Chat Modes**: Interactive Web Speech API voice synthesis and speech recognition alongside a real-time text chat UI.
-- 📊 **Automated Competency Evaluation**: Scores candidates on a 0–100 scale across Technical Accuracy, System Architecture Knowledge, Communication & Clarity, and Problem Solving.
-- 🛡️ **Hardened API Gateway**: Express.js gateway with Clerk JWT verification, rate limiting (100 req / 15-min window), and payload validation.
-- 🚀 **Resilient Dual-Model LLM System**: Primary model `gemini-2.5-flash-lite` with exponential retry jitter and automatic fallback to `gemini-2.0-flash`, backed by `SQLiteCache`.
-
----
-
-## 🧬 Multi-Agent Interview Flow
-
-```mermaid
-graph TD
-    User([Candidate Input]) --> Observer[Observer Agent]
-    Observer -->|Sentiment & Hesitation Flag| Interviewer[Technical Interviewer Agent]
-    Interviewer -->|Retrieve Resume Chunks| RAG[(pgvector Store)]
-    RAG -->|Relevant Experience Context| Interviewer
-    Interviewer --> Route{Phase Complete?}
-    Route -->|Ongoing Turn| TurnState[Persist Turn & Spoken Response]
-    Route -->|Closing Phase| Evaluator[Evaluator Agent]
-    Evaluator -->|Rubric Comparison| Feedback[Generate Multidimensional Report]
-    Feedback --> DB[(PostgreSQL Storage)]
+ ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                                   NEXT.JS 16 FRONTEND TIER                                     │
+ │  (App Router • TailwindCSS • Web Speech API • Speech Recognition & Synthesis • Clerk Auth)    │
+ └───────────────────────────────────────────────┬────────────────────────────────────────────────┘
+                                                 │ HTTPS / REST (Clerk Bearer JWT)
+                                                 ▼
+ ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                                 EXPRESS.JS API GATEWAY TIER                                    │
+ │  (Port 3001 • Rate Limiting 100req/15m • Clerk authGuard • Axios Proxy • Payload Validation)   │
+ └───────────────────────────────────────────────┬────────────────────────────────────────────────┘
+                                                 │ Internal Proxy Route
+                                                 ▼
+ ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                              FASTAPI & LANGGRAPH AI BACKEND TIER                               │
+ │  (Port 8000 • Master Orchestrator Graph • Resilient LLM Fallback • LangSmith Tracing)         │
+ │                                                                                                │
+ │   ┌──────────────────────┐    ┌──────────────────────────────────┐    ┌──────────────────────┐ │
+ │   │    OBSERVER AGENT    │───►│   TECHNICAL INTERVIEWER AGENT    │───►│   EVALUATOR AGENT    │ │
+ │   │ (Sentiment/Hesitation│    │   (8-Phase Adaptive FSM Protocol │    │  (Rubric Assessment  │ │
+ │   │  Analysis & Hinting) │    │    + pgvector RAG Context)       │    │   0-100 Competency)  │ │
+ │   └──────────────────────┘    └──────────────────────────────────┘    └──────────────────────┘ │
+ └───────────────────────────────┬────────────────────────────────┬───────────────────────────────┘
+                                 │                                │
+                                 ▼                                ▼
+ ┌──────────────────────────────────────────────┐ ┌──────────────────────────────────────────────┐
+ │     SUPABASE POSTGRESQL + PGVECTOR STORE     │ │           GOOGLE GEMINI LLM ENGINE           │
+ │  - `pgvector` Document Embeddings            │ │  - Primary: gemini-2.5-flash-lite            │
+ │  - Session Transcripts & Evaluation Data     │ │  - Fallback: gemini-2.0-flash (Retry Backoff)│
+ │  - Candidate Profile Persistence             │ │  - Embeddings: text-embedding-004            │
+ └──────────────────────────────────────────────┘ └──────────────────────────────────────────────┘
+====================================================================================================
 ```
 
 ---
 
-## 🛠️ Tech Stack & Feature Inventory
+## 🔄 Multi-Agent Sequence Flow
 
-| Tier | Component | Technology | Description |
+```
+[Candidate Input]
+        │
+        ▼
+┌──────────────────┐
+│ Observer Agent   │ ──► Analyzes Sentiment & Silence Duration (silence_duration_ms)
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Interviewer Agent│ ──► Queries Supabase `pgvector` for resume chunks matching query (k=3)
+└────────┬─────────┘
+         │
+         ├──► [Ongoing Turn] ──► Save Turn Transcript to Postgres & Return Spoken Response to UI
+         │
+         └──► [Closing Phase] ──► Trigger Evaluator Agent
+                                         │
+                                         ▼
+                                 ┌──────────────────┐
+                                 │ Evaluator Agent  │ ──► Compare Transcript vs Rubrics (rubric_seed.py)
+                                 └────────┬─────────┘
+                                          │
+                                          ▼
+                                 [Generate 0-100 Score Report & Save Evaluation]
+```
+
+---
+
+## 📂 Detailed File-by-File Codebase Inventory
+
+### 🤖 1. Backend Core (`backend/app/`)
+
+#### Agents & LangGraph Subgraphs (`backend/app/agents/`)
+- **[`orchestrator.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/agents/orchestrator.py)**: The Master LangGraph StateGraph connecting `observer_node` -> `interviewer_node` -> `persist_turn_node` -> `evaluator_node`.
+- **[`observer_graph.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/agents/observer_graph.py)**: LangGraph subgraph agent analyzing candidate speech pauses (`silence_duration_ms`), sentiment, and setting `recommend_hint=True` when hesitant.
+- **[`interviewer_graph.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/agents/interviewer_graph.py)**: LangGraph subgraph agent executing the **8-Phase Interview Protocol** (*Introduction, Screening, Adaptation, Follow-Up, Deep Dive, Scenario, Feedback, Closing*) with pgvector context retrieval.
+- **[`evaluator_graph.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/agents/evaluator_graph.py)**: LangGraph subgraph agent comparing the complete transcript against stored role rubrics to compute 0–100 competency scores.
+- **[`schemas.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/agents/schemas.py)**: Pydantic schemas enforcing structured JSON output for all agents (`ObserverOutput`, `InterviewerAction`, `EvaluationResult`, `CandidateExtraction`).
+- **[`state.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/agents/state.py)**: Central `TurnState` TypedDict definition tracking session metadata, transcripts, and evaluation flags.
+
+#### Backend Services (`backend/app/services/`)
+- **[`database.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/services/database.py)**: PostgreSQL / SQLAlchemy persistence layer exporting `save_turn`, `save_evaluation`, `get_analytics`, and `update_profile` with in-memory fallback.
+- **[`extractor.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/services/extractor.py)**: Candidate resume data extractor running `gemini-2.0-flash` to pull skills, gap analysis, and tailored strategy.
+- **[`ingestion.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/services/ingestion.py)**: Document loader and chunking service using `PyPDFLoader` and `RecursiveCharacterTextSplitter`.
+- **[`llm_config.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/services/llm_config.py)**: Configures resilient Gemini models (`gemini-2.5-flash-lite` primary with exponential backoff fallback to `gemini-2.0-flash`), `SQLiteCache`, and LangSmith tracing.
+- **[`rag_engine.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/services/rag_engine.py)**: Initializes Supabase `pgvector` store and provides metadata-filtered retrievers (`get_resume_retriever`, `get_rubric_retriever`).
+- **[`rubric_seed.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/services/rubric_seed.py)**: Pre-seeded standard evaluation rubrics for System Design, Backend, Frontend, and General Technical roles.
+
+#### FastAPI Server & Tests
+- **[`main.py`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/app/main.py)**: FastAPI REST application exposing `/process-context`, `/orchestrator/turn`, `/feedback/evaluate`, `/analytics/history`, and `/profile/{user_id}`.
+- **[`tests/`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/backend/tests/)**: Pytest suite containing `test_database.py`, `test_ingestion.py`, and `test_orchestrator.py` (10/10 tests passing).
+
+---
+
+### 🛡️ 2. Express API Gateway (`gateway/`)
+
+- **[`server.js`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/gateway/src/server.js)**: Gateway entry point configuring Express, Helmet security headers, CORS, and route mounting.
+- **[`routes/interview.routes.js`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/gateway/src/routes/interview.routes.js)**: Express route handlers for public endpoints (`/health`, `/process-context`, `/interview/chat/next-turn`, `/interview/generate-feedback`, `/interview/dashboard/:userId`, `/interview/profile/:userId`).
+- **[`middleware/auth.middleware.js`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/gateway/src/middleware/auth.middleware.js)**: Clerk Bearer JWT token verification guard.
+- **[`middleware/rateLimit.middleware.js`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/gateway/src/middleware/rateLimit.middleware.js)**: Sliding-window rate limiter enforcing max 100 requests per 15 minutes per IP.
+- **[`middleware/validate.middleware.js`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/gateway/src/middleware/validate.middleware.js)**: Request payload validation helpers.
+- **[`services/fastapiClient.js`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/gateway/src/services/fastapiClient.js)**: Axios HTTP client proxying requests from gateway to FastAPI backend.
+- **[`tests/interview.routes.test.js`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/gateway/tests/interview.routes.test.js)**: Jest & Supertest integration suite (9/9 tests passing).
+
+---
+
+### 💻 3. Next.js 16 Frontend (`frontend/`)
+
+- **[`app/page.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/page.tsx)**: Landing & setup page for uploading PDF resumes, setting job descriptions, and selecting voice/chat modes.
+- **[`app/interview/page.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/interview/page.tsx)**: Live interview interface featuring Web Speech API voice synthesis, live transcript, and phase progression indicator.
+- **[`app/feedback/page.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/feedback/page.tsx)**: Post-interview feedback dashboard displaying overall scores (/100), competency bar charts, key strengths, and growth recommendations.
+- **[`app/dashboard/page.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/dashboard/page.tsx)**: Historical candidate dashboard displaying past interview sessions, score trends, and detailed turn modals.
+- **[`app/profile/page.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/profile/page.tsx)**: Profile management page for configuring target role and primary tech stack preferences.
+- **[`app/not-found.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/not-found.tsx)**: Branded 404 error page.
+- **[`app/error.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/error.tsx)**: Global error boundary with retry triggers.
+- **[`app/loading.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/app/loading.tsx)**: Skeleton loader component.
+- **[`components/Navbar.tsx`](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/frontend/components/Navbar.tsx)**: Sticky header with logo, navigation links (Practice, Dashboard, Profile), and Clerk UserButton.
+
+---
+
+## 🛠️ Feature & Technology Inventory
+
+| Tier | Component | Technology | Purpose |
 |---|---|---|---|
-| **Frontend** | Application Framework | Next.js 16 (App Router) | Reactive client interface with server-side rendering & dynamic layouts |
-| | Styling & Animation | Tailwind CSS v4, Framer Motion | Modern dark glassmorphism design system & smooth transitions |
-| | Authentication | Clerk Auth | JWT session token management & modal login |
-| | Voice Integration | Web Speech API | Client-side zero-latency STT recognition and speech synthesis |
-| **API Gateway** | Microservice Gateway | Node.js, Express.js | Central security layer, route proxying, and CORS handling |
-| | Middleware | `express-rate-limit`, `helmet`, `jsonwebtoken` | Rate limiting, security headers, JWT validation |
-| **Backend Core** | AI Framework | Python 3.11+, FastAPI, LangGraph | High-throughput asynchronous multi-agent engine |
-| | LLM Engine | Google Gemini 2.5 Flash Lite & 2.0 Flash | Structured JSON turn generation with low latency |
-| | Vector Database | Supabase PostgreSQL + `pgvector` | Session-scoped document embeddings using `text-embedding-004` |
-| | Reliability & Cache | LangChain `SQLiteCache`, retry wrappers | Local response caching and automatic model fallback |
-
----
-
-## 📁 Project Repository Structure
-
-```
-RecruitAI/
-├── frontend/                     # Next.js 16 App Router UI
-│   ├── app/                      # Page routes (/, /interview, /feedback, /dashboard, /profile)
-│   ├── components/               # UI components (Navbar, Waveform, AudioRecorder)
-│   ├── .env.local                # Local environment keys template
-│   └── package.json
-│
-├── gateway/                      # Express.js API Gateway
-│   ├── src/
-│   │   ├── middleware/           # auth.middleware.js, rateLimit.middleware.js, validate.middleware.js
-│   │   ├── routes/               # interview.routes.js
-│   │   └── server.js             # Gateway entry point
-│   ├── tests/                    # Gateway integration tests (Jest + Supertest)
-│   └── package.json
-│
-├── backend/                      # FastAPI & LangGraph AI Backend
-│   ├── app/
-│   │   ├── agents/               # LangGraph graphs (observer_graph, interviewer_graph, evaluator_graph, orchestrator)
-│   │   │   ├── schemas.py        # Pydantic structured output models
-│   │   │   └── state.py          # TurnState TypedDict state definition
-│   │   ├── services/             # Services (database, extractor, ingestion, llm_config, rag_engine, rubric_seed)
-│   │   └── main.py               # FastAPI REST endpoints
-│   ├── tests/                    # Backend unit & graph tests (Pytest)
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── docs/                         # Extended documentation
-│   ├── API.md                    # Full REST API Reference
-│   ├── DEPLOYMENT.md             # Production deployment guide (Vercel, Render, Supabase)
-│   ├── ARCHITECTURE.md           # Deep dive architecture documentation
-│   └── architecture-diagram.svg  # 3D Isometric Architecture Diagram
-│
-├── .env.example                  # Root environment template for Docker Compose
-├── docker-compose.yml            # Multi-container local deployment spec
-└── README.md
-```
+| **Frontend** | Framework | Next.js 16 (App Router) | Client application with server-side rendering & static prerendering |
+| | Styling | Tailwind CSS v4, Lucide Icons | Modern dark-mode glassmorphism design system |
+| | Auth | Clerk Auth | JWT session validation & user identity |
+| | Voice | Web Speech API | Native client-side Speech Recognition & Speech Synthesis |
+| **Gateway** | API Gateway | Node.js, Express.js | Security proxy, CORS handling, and rate limiting |
+| | Middleware | `express-rate-limit`, `helmet`, `jsonwebtoken` | Defense-in-depth security guard |
+| **Backend** | Agent Engine | Python 3.11+, FastAPI, LangGraph | Stateful multi-agent state machine orchestrator |
+| | LLM Engine | Gemini 2.5 Flash Lite & 2.0 Flash | Ultra-low latency structured JSON output |
+| | Vector DB | Supabase PostgreSQL + `pgvector` | RAG vector embeddings using `text-embedding-004` |
+| | Cache & Retry | LangChain `SQLiteCache`, exponential backoff | Zero-cost response caching & API resilience |
 
 ---
 
 ## 🚀 Quick Start (Local Setup)
 
 ### Option A: Using Docker Compose (Simplest)
+```bash
+# 1. Clone repository
+git clone https://github.com/mohammadhafeezuddin81/RecruitAI.git
+cd RecruitAI
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/mohammadhafeezuddin81/RecruitAI.git
-   cd RecruitAI
-   ```
-2. Create root `.env` from template:
-   ```bash
-   cp .env.example .env
-   ```
-3. Launch all services:
-   ```bash
-   docker compose up --build
-   ```
-   - **Frontend**: `http://localhost:3000`
-   - **API Gateway**: `http://localhost:3001`
-   - **Backend API**: `http://localhost:8000`
+# 2. Create environment file
+cp .env.example .env
+
+# 3. Launch stack
+docker compose up --build
+```
+
+Access endpoints:
+- **Frontend**: `http://localhost:3000`
+- **Express Gateway**: `http://localhost:3001`
+- **FastAPI Backend**: `http://localhost:8000`
 
 ---
 
-### Option B: Running Microservices Manually
+### Option B: Manual Setup
 
-#### 1. Backend AI Engine (FastAPI)
+#### 1. FastAPI Backend (Port 8000)
 ```bash
 cd backend
 python -m venv venv
 # Windows:
 .\venv\Scripts\activate
-# macOS/Linux:
+# Linux/macOS:
 source venv/bin/activate
 
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-#### 2. Express API Gateway
+#### 2. Express Gateway (Port 3001)
 ```bash
 cd gateway
 npm install
 npm run dev
 ```
 
-#### 3. Next.js Frontend
+#### 3. Next.js Frontend (Port 3000)
 ```bash
 cd frontend
 npm install
@@ -161,16 +207,16 @@ npm run dev
 
 ---
 
-## 🧪 Testing & Verification
+## 🧪 Automated Testing Commands
 
-### Gateway Integration Test Suite (Jest & Supertest)
+### Gateway Integration Tests (Jest & Supertest)
 ```bash
 cd gateway
 npm test
 ```
 *Result: 9 / 9 passed (100% pass rate)*
 
-### Backend Test Suite (Pytest)
+### Backend Unit & Graph Tests (Pytest)
 ```bash
 cd backend
 python -m pytest -v
