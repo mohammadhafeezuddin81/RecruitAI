@@ -1,94 +1,202 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 820" width="100%" height="100%" style="background:#0b0f19; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="100%" height="100%">
   <defs>
-    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3b82f6" />
-      <stop offset="100%" stop-color="#10b981" />
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#050811"/>
     </linearGradient>
-    <linearGradient id="gatewayGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1e293b" />
-      <stop offset="100%" stop-color="#0f172a" />
+
+    <!-- Glowing Layer Gradients -->
+    <linearGradient id="feGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.9"/>
     </linearGradient>
-    <linearGradient id="agentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1e1b4b" />
-      <stop offset="100%" stop-color="#0f172a" />
+    <linearGradient id="gwGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#6d28d9" stop-opacity="0.9"/>
     </linearGradient>
+    <linearGradient id="beGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#047857" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="dbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#b45309" stop-opacity="0.9"/>
+    </linearGradient>
+
+    <!-- Side 3D Gradients -->
+    <linearGradient id="sideDark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.7"/>
+    </linearGradient>
+
+    <!-- Glow Filter -->
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    
+    <!-- Neon Connection Line Glow -->
+    <filter id="lineGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
 
-  <!-- Title -->
-  <text x="550" y="45" text-anchor="middle" fill="#f8fafc" font-size="24" font-weight="700" letter-spacing="1">RECRUITAI — PRODUCTION ARCHITECTURE</text>
-  <text x="550" y="70" text-anchor="middle" fill="#94a3b8" font-size="14">Multi-Agent LangGraph Orchestration • Express Gateway • RAG Ingestion • Cloud Run</text>
+  <!-- Background -->
+  <rect width="1200" height="750" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Isometric Grid Pattern -->
+  <g stroke="#ffffff" stroke-opacity="0.03" stroke-width="1">
+    <path d="M 0 150 L 1200 750 M 0 300 L 1200 900 M 0 0 L 1200 600 M 0 -150 L 1200 450" />
+    <path d="M 0 600 L 1200 0 M 0 750 L 1200 150 M 0 450 L 1200 -150 M 0 900 L 1200 300" />
+  </g>
 
-  <!-- Next.js Frontend Box -->
-  <rect x="350" y="100" width="400" height="75" rx="12" fill="#1e293b" stroke="#3b82f6" stroke-width="2" />
-  <text x="550" y="132" text-anchor="middle" fill="#f8fafc" font-size="16" font-weight="600">🎨 Next.js 14 Frontend</text>
-  <text x="550" y="155" text-anchor="middle" fill="#94a3b8" font-size="13">Clerk Auth • Vapi Voice UI • WebRTC &amp; VAD</text>
+  <!-- Title & Subtitle Header -->
+  <text x="600" y="50" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="28" fill="#ffffff" text-anchor="middle" letter-spacing="1">
+    RECRUITAI — 3D ISOMETRIC CLOUD ARCHITECTURE
+  </text>
+  <text x="600" y="78" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="14" fill="#94a3b8" text-anchor="middle">
+    Autonomous Multi-Agent System • Express API Gateway • FastAPI LangGraph Engine • Supabase pgvector RAG
+  </text>
 
-  <!-- Arrow: Frontend -> Gateway -->
-  <path d="M 550 175 L 550 215" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="4 4" marker-end="url(#arrow)" />
-  <text x="590" y="200" fill="#38bdf8" font-size="12" font-weight="500">HTTPS (Clerk JWT)</text>
+  <!-- 3D LAYER 1: CLIENT / FRONTEND TIER (TOP) -->
+  <g transform="translate(180, 110)">
+    <!-- Top Face -->
+    <polygon points="250,0 550,0 450,90 150,90" fill="url(#feGrad)" stroke="#60a5fa" stroke-width="2" filter="url(#glow)"/>
+    <!-- Left Face -->
+    <polygon points="150,90 450,90 450,110 150,110" fill="#1e40af" opacity="0.9"/>
+    <!-- Right Face -->
+    <polygon points="450,90 550,0 550,20 450,110" fill="#1e3a8a" opacity="0.9"/>
+    <!-- Label -->
+    <text x="350" y="42" font-family="system-ui, sans-serif" font-weight="800" font-size="18" fill="#ffffff" text-anchor="middle">
+      1. Next.js 16 Frontend Tier
+    </text>
+    <text x="350" y="64" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="#dbeafe" text-anchor="middle">
+      Clerk JWT Auth • Web Speech API • Tailwind CSS v4 • Voice / Chat UI
+    </text>
+  </g>
 
-  <!-- Node/Express Gateway Box -->
-  <rect x="300" y="220" width="500" height="85" rx="12" fill="url(#gatewayGrad)" stroke="#10b981" stroke-width="2" />
-  <text x="550" y="252" text-anchor="middle" fill="#f8fafc" font-size="16" font-weight="600">🛡️ Node/Express API Gateway (Cloud Run Public)</text>
-  <text x="550" y="278" text-anchor="middle" fill="#94a3b8" font-size="13">Auth Guard • Input Validation • Rate Limiting (100 req/15m) • Route Proxy</text>
+  <!-- Connection Line 1 -> 2 -->
+  <path d="M 480 215 L 480 265" stroke="#3b82f6" stroke-width="4" stroke-dasharray="6,6" filter="url(#lineGlow)"/>
+  <polygon points="480,272 474,260 486,260" fill="#3b82f6"/>
 
-  <!-- Arrow: Gateway -> FastAPI Backend -->
-  <path d="M 550 305 L 550 345" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow)" />
-  <text x="615" y="330" fill="#34d399" font-size="12" font-weight="500">Internal VPC / IAM Token</text>
+  <!-- 3D LAYER 2: EXPRESS API GATEWAY TIER -->
+  <g transform="translate(180, 260)">
+    <!-- Top Face -->
+    <polygon points="250,0 550,0 450,90 150,90" fill="url(#gwGrad)" stroke="#c084fc" stroke-width="2" filter="url(#glow)"/>
+    <!-- Left Face -->
+    <polygon points="150,90 450,90 450,110 150,110" fill="#5b21b6" opacity="0.9"/>
+    <!-- Right Face -->
+    <polygon points="450,90 550,0 550,20 450,110" fill="#4c1d95" opacity="0.9"/>
+    <!-- Label -->
+    <text x="350" y="42" font-family="system-ui, sans-serif" font-weight="800" font-size="18" fill="#ffffff" text-anchor="middle">
+      2. Express.js API Gateway Tier
+    </text>
+    <text x="350" y="64" font-family="system-ui, sans-serif" font-weight="600" font-size="12" fill="#f3e8ff" text-anchor="middle">
+      Rate Limiter (100 req/15m) • Clerk Auth Guard • Proxy Router
+    </text>
+  </g>
 
-  <!-- Python FastAPI Agent Service Container -->
-  <rect x="100" y="350" width="900" height="340" rx="16" fill="url(#agentGrad)" stroke="#6366f1" stroke-width="2" />
-  <text x="130" y="382" fill="#e0e7ff" font-size="18" font-weight="700">⚡ Python FastAPI — Agent Service (Cloud Run Internal)</text>
+  <!-- Connection Line 2 -> 3 -->
+  <path d="M 480 365 L 480 415" stroke="#a855f7" stroke-width="4" stroke-dasharray="6,6" filter="url(#lineGlow)"/>
+  <polygon points="480,422 474,410 486,410" fill="#a855f7"/>
 
-  <!-- Supervisor Orchestrator Graph -->
-  <rect x="140" y="405" width="820" height="155" rx="12" fill="#0f172a" stroke="#818cf8" stroke-width="1.5" />
-  <text x="160" y="432" fill="#a5b4fc" font-size="14" font-weight="600">🧠 Orchestrator Supervisor Graph (LangGraph StateGraph)</text>
+  <!-- 3D LAYER 3: FASTAPI & LANGGRAPH AGENT ENGINE (CORE) -->
+  <g transform="translate(140, 410)">
+    <!-- Top Face -->
+    <polygon points="290,0 630,0 510,120 170,120" fill="url(#beGrad)" stroke="#34d399" stroke-width="2" filter="url(#glow)"/>
+    <!-- Left Face -->
+    <polygon points="170,120 510,120 510,145 170,145" fill="#065f46" opacity="0.9"/>
+    <!-- Right Face -->
+    <polygon points="510,120 630,0 630,25 510,145" fill="#044e37" opacity="0.9"/>
+    <!-- Label -->
+    <text x="400" y="40" font-family="system-ui, sans-serif" font-weight="800" font-size="20" fill="#ffffff" text-anchor="middle">
+      3. FastAPI &amp; LangGraph Multi-Agent Engine
+    </text>
+    <text x="400" y="65" font-family="system-ui, sans-serif" font-weight="600" font-size="13" fill="#a7f3d0" text-anchor="middle">
+      🕵️ Observer Subgraph • 👔 Interviewer Subgraph (8-Phase FSM) • ⚖️ Evaluator Subgraph
+    </text>
+    <text x="400" y="88" font-family="system-ui, sans-serif" font-weight="500" font-size="11" fill="#ecfdf5" text-anchor="middle">
+      SQLiteCache • Exponential Backoff Retry • LangSmith Observability Tracing
+    </text>
+  </g>
 
-  <!-- Subgraph 1: Observer -->
-  <rect x="160" y="450" width="220" height="85" rx="8" fill="#1e1b4b" stroke="#a855f7" stroke-width="1.5" />
-  <text x="270" y="480" text-anchor="middle" fill="#f5d0fe" font-size="14" font-weight="600">🕵️ Observer Subgraph</text>
-  <text x="270" y="502" text-anchor="middle" fill="#d8b4fe" font-size="11">Perception • Silence &gt; 2s</text>
-  <text x="270" y="520" text-anchor="middle" fill="#c084fc" font-size="11">Hesitation &amp; Hint Trigger</text>
+  <!-- Branching Connection Lines to Storage & LLMs -->
+  <path d="M 320 545 L 240 610" stroke="#10b981" stroke-width="4" stroke-dasharray="5,5" filter="url(#lineGlow)"/>
+  <polygon points="234,615 240,602 248,610" fill="#10b981"/>
 
-  <!-- Flow arrow: Observer -> Interviewer -->
-  <path d="M 380 492 L 430 492" stroke="#a855f7" stroke-width="2" />
+  <path d="M 640 545 L 720 610" stroke="#10b981" stroke-width="4" stroke-dasharray="5,5" filter="url(#lineGlow)"/>
+  <polygon points="726,615 712,610 720,602" fill="#10b981"/>
 
-  <!-- Subgraph 2: Interviewer -->
-  <rect x="430" y="450" width="240" height="85" rx="8" fill="#1e1b4b" stroke="#38bdf8" stroke-width="1.5" />
-  <text x="550" y="480" text-anchor="middle" fill="#e0f2fe" font-size="14" font-weight="600">👔 Interviewer Subgraph</text>
-  <text x="550" y="502" text-anchor="middle" fill="#7dd3fc" font-size="11">8-Phase FSM Logic</text>
-  <text x="550" y="520" text-anchor="middle" fill="#38bdf8" font-size="11">Resume RAG • Adaptive Probing</text>
+  <!-- 3D LAYER 4A: STORAGE TIER (SUPABASE PGVECTOR) -->
+  <g transform="translate(50, 600)">
+    <!-- Top Face -->
+    <polygon points="180,0 380,0 300,75 100,75" fill="url(#dbGrad)" stroke="#fbbf24" stroke-width="2" filter="url(#glow)"/>
+    <!-- Left Face -->
+    <polygon points="100,75 300,75 300,90 100,90" fill="#92400e" opacity="0.9"/>
+    <!-- Right Face -->
+    <polygon points="300,75 380,0 380,15 300,90" fill="#78350f" opacity="0.9"/>
+    <!-- Label -->
+    <text x="240" y="34" font-family="system-ui, sans-serif" font-weight="800" font-size="15" fill="#ffffff" text-anchor="middle">
+      4A. Supabase PostgreSQL
+    </text>
+    <text x="240" y="54" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="#fef3c7" text-anchor="middle">
+      `pgvector` Store • Transcripts &amp; Profile
+    </text>
+  </g>
 
-  <!-- Flow arrow: Interviewer -> Evaluator -->
-  <path d="M 670 492 L 720 492" stroke="#38bdf8" stroke-width="2" />
+  <!-- 3D LAYER 4B: INTELLIGENCE TIER (GEMINI MODELS) -->
+  <g transform="translate(550, 600)">
+    <!-- Top Face -->
+    <polygon points="180,0 380,0 300,75 100,75" fill="url(#feGrad)" stroke="#38bdf8" stroke-width="2" filter="url(#glow)"/>
+    <!-- Left Face -->
+    <polygon points="100,75 300,75 300,90 100,90" fill="#0369a1" opacity="0.9"/>
+    <!-- Right Face -->
+    <polygon points="300,75 380,0 380,15 300,90" fill="#075985" opacity="0.9"/>
+    <!-- Label -->
+    <text x="240" y="34" font-family="system-ui, sans-serif" font-weight="800" font-size="15" fill="#ffffff" text-anchor="middle">
+      4B. Google Gemini Engine
+    </text>
+    <text x="240" y="54" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="#e0f2fe" text-anchor="middle">
+      2.5-Flash-Lite • 2.0-Flash • text-embedding-004
+    </text>
+  </g>
 
-  <!-- Subgraph 3: Evaluator -->
-  <rect x="720" y="450" width="220" height="85" rx="8" fill="#1e1b4b" stroke="#f59e0b" stroke-width="1.5" />
-  <text x="830" y="480" text-anchor="middle" fill="#fef3c7" font-size="14" font-weight="600">⚖️ Evaluator Subgraph</text>
-  <text x="830" y="502" text-anchor="middle" fill="#fde68a" font-size="11">Rubric RAG Retrieval</text>
-  <text x="830" y="520" text-anchor="middle" fill="#fbbf24" font-size="11">Confidence Gated (retry &lt; 0.7)</text>
+  <!-- Legend Box (Right side) -->
+  <g transform="translate(860, 150)">
+    <rect width="280" height="420" rx="16" fill="#0f172a" fill-opacity="0.8" stroke="#334155" stroke-width="2"/>
+    <text x="140" y="35" font-family="system-ui, sans-serif" font-weight="800" font-size="16" fill="#ffffff" text-anchor="middle">
+      SYSTEM CAPABILITIES
+    </text>
 
-  <!-- Ingestion Pipeline & RAG Bar -->
-  <rect x="140" y="580" width="390" height="90" rx="10" fill="#0f172a" stroke="#06b6d4" stroke-width="1.5" />
-  <text x="160" y="608" fill="#67e8f9" font-size="13" font-weight="600">📂 Ingestion &amp; RAG Vector Store</text>
-  <text x="160" y="632" fill="#94a3b8" font-size="12">PyPDFLoader • RecursiveCharacterTextSplitter (800 chars)</text>
-  <text x="160" y="652" fill="#94a3b8" font-size="12">ChromaDB metadata filter (session_id / role_category)</text>
+    <circle cx="30" cy="75" r="8" fill="#3b82f6"/>
+    <text x="50" y="80" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#e2e8f0">Next.js 16 UI</text>
+    <text x="50" y="98" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">Voice &amp; Chat Modes with Clerk Auth</text>
 
-  <!-- Reliability & Observability Bar -->
-  <rect x="560" y="580" width="400" height="90" rx="10" fill="#0f172a" stroke="#ec4899" stroke-width="1.5" />
-  <text x="580" y="608" fill="#f472b6" font-size="13" font-weight="600">⚡ Reliability &amp; Observability</text>
-  <text x="580" y="632" fill="#94a3b8" font-size="12">LangSmith Tracing (all nodes &amp; subgraphs)</text>
-  <text x="580" y="652" fill="#94a3b8" font-size="12">Gemini 2.5 Flash Lite + Retry/Fallback + SQLiteCache</text>
+    <circle cx="30" cy="135" r="8" fill="#8b5cf6"/>
+    <text x="50" y="140" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#e2e8f0">API Gateway</text>
+    <text x="50" y="158" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">Rate limiting &amp; Bearer JWT guard</text>
 
-  <!-- Bottom Arrow: Backend -> Database -->
-  <path d="M 550 690 L 550 730" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arrow)" />
+    <circle cx="30" cy="195" r="8" fill="#10b981"/>
+    <text x="50" y="200" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#e2e8f0">LangGraph Pipeline</text>
+    <text x="50" y="218" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">Observer ➔ Interviewer ➔ Evaluator</text>
 
-  <!-- Firebase Firestore Box -->
-  <rect x="350" y="730" width="400" height="65" rx="12" fill="#1e293b" stroke="#f59e0b" stroke-width="2" />
-  <text x="550" y="758" text-anchor="middle" fill="#f8fafc" font-size="16" font-weight="600">🔥 Firebase Firestore</text>
-  <text x="550" y="779" text-anchor="middle" fill="#94a3b8" font-size="12">Session State • Transcripts Array • Evaluation Reports</text>
+    <circle cx="30" cy="255" r="8" fill="#f59e0b"/>
+    <text x="50" y="260" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#e2e8f0">Supabase pgvector</text>
+    <text x="50" y="278" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">Session-scoped resume/JD RAG</text>
+
+    <circle cx="30" cy="315" r="8" fill="#38bdf8"/>
+    <text x="50" y="320" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#e2e8f0">Gemini Dual-LLM</text>
+    <text x="50" y="338" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">Exponential retry &amp; model fallback</text>
+
+    <circle cx="30" cy="375" r="8" fill="#ec4899"/>
+    <text x="50" y="380" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#e2e8f0">Evaluation Report</text>
+    <text x="50" y="398" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">0-100 rubric scoring across 4 pillars</text>
+  </g>
+
 </svg>

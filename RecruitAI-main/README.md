@@ -7,13 +7,19 @@
 [![Supabase](https://img.shields.io/badge/Supabase-pgvector-3ECF8E?logo=supabase)](https://supabase.com/)
 [![Express Gateway](https://img.shields.io/badge/Express-API_Gateway-000000?logo=express)](https://expressjs.com/)
 
-**RecruitAI** is a goal-driven, autonomous multi-agent AI technical interviewing platform built to simulate high-pressure, realistic coding and behavioral job interviews. 
+**RecruitAI** is an autonomous, multi-agent AI technical interviewing platform built to simulate high-pressure, realistic coding and behavioral job interviews.
 
 Unlike simple single-prompt chat scripts, RecruitAI executes a **Graph-of-Graphs orchestration workflow** using **LangGraph**, combining real-time speech perception (*Observer Agent*), an 8-phase adaptive interview Finite State Machine (*Technical Interviewer Agent*), and automated rubric evaluation (*Evaluator Agent*).
 
 ---
 
-## 📸 Overview & Features
+## 📐 3D Cloud Architecture Diagram
+
+![RecruitAI 3D Architecture](docs/architecture-diagram.svg)
+
+---
+
+## 📸 Core Features & Capabilities
 
 - 🧠 **Multi-Agent LangGraph Pipeline**: Stateful, non-linear interview graph supervising 3 specialized sub-agents.
 - 🎯 **8-Phase Adaptive Protocol**: Seamlessly transitions through Introduction, Screening, Adaptation (offering hints on candidate hesitation), Probing Follow-up, Resume Deep Dive, Scenario Troubleshooting, Interim Feedback, and Closing.
@@ -25,48 +31,7 @@ Unlike simple single-prompt chat scripts, RecruitAI executes a **Graph-of-Graphs
 
 ---
 
-## 🏗️ System Architecture & End-to-End Flow
-
-```
-                                 ┌─────────────────────────────────────────────────┐
-                                 │              Next.js 16 Frontend                │
-                                 │ (App Router, TailwindCSS, Web Speech API, Clerk)│
-                                 └────────────────────────┬────────────────────────┘
-                                                          │ HTTPS / REST (Clerk Bearer Token)
-                                                          ▼
-                                 ┌─────────────────────────────────────────────────┐
-                                 │           Express.js API Gateway                │
-                                 │  (Auth Guard, Rate Limiter, Payload Validation) │
-                                 └────────────────────────┬────────────────────────┘
-                                                          │ Internal Microservice Proxy
-                                                          ▼
-                                 ┌─────────────────────────────────────────────────┐
-                                 │              FastAPI AI Backend                 │
-                                 │           (LangGraph Orchestrator)              │
-                                 │                                                 │
-                                 │  ┌───────────────┐ ┌──────────────────────────┐  │
-                                 │  │ Observer Agent│ │ Technical Interviewer    │  │
-                                 │  │ (Sentiment/   │ │ (8-Phase FSM +           │  │
-                                 │  │  Hesitation)  │ │  pgvector RAG)           │  │
-                                 │  └───────┬───────┘ └────────────┬─────────────┘  │
-                                 │          └──────────────┬───────┘                │
-                                 │                         ▼                        │
-                                 │               ┌──────────────────┐               │
-                                 │               │ Evaluator Agent  │ (on close)    │
-                                 │               │ (Rubric Scoring) │               │
-                                 │               └──────────────────┘               │
-                                 └──────────┬────────────────────────────┬──────────┘
-                                            │                            │
-                                            ▼                            ▼
-                       ┌──────────────────────────┐        ┌──────────────────────────┐
-                       │   Supabase / PostgreSQL  │        │   Google Gemini Models   │
-                       │    (`pgvector` Store)    │        │ (2.5-flash-lite / 2.0)  │
-                       └──────────────────────────┘        └──────────────────────────┘
-```
-
----
-
-## 🧬 Multi-Agent System Architecture
+## 🧬 Multi-Agent Interview Flow
 
 ```mermaid
 graph TD
@@ -83,7 +48,7 @@ graph TD
 
 ---
 
-## 🛠️ Tech Stack & Feature Breakdown
+## 🛠️ Tech Stack & Feature Inventory
 
 | Tier | Component | Technology | Description |
 |---|---|---|---|
@@ -100,7 +65,7 @@ graph TD
 
 ---
 
-## 📁 Repository Structure
+## 📁 Project Repository Structure
 
 ```
 RecruitAI/
@@ -131,7 +96,9 @@ RecruitAI/
 │
 ├── docs/                         # Extended documentation
 │   ├── API.md                    # Full REST API Reference
-│   └── DEPLOYMENT.md             # Production deployment guide (Vercel, Render, Supabase)
+│   ├── DEPLOYMENT.md             # Production deployment guide (Vercel, Render, Supabase)
+│   ├── ARCHITECTURE.md           # Deep dive architecture documentation
+│   └── architecture-diagram.svg  # 3D Isometric Architecture Diagram
 │
 ├── .env.example                  # Root environment template for Docker Compose
 ├── docker-compose.yml            # Multi-container local deployment spec
@@ -153,7 +120,7 @@ RecruitAI/
    ```bash
    cp .env.example .env
    ```
-3. Launch all 3 services:
+3. Launch all services:
    ```bash
    docker compose up --build
    ```
@@ -212,9 +179,10 @@ python -m pytest -v
 
 ---
 
-## 📄 Documentation Links
+## 📄 Extended Documentation
 
-- 📡 [REST API Reference](docs/API.md) — Comprehensive reference of all Gateway and FastAPI endpoints.
+- 🏛️ [3D Architecture Deep Dive](docs/ARCHITECTURE.md) — Comprehensive guide on state machine routing and RAG pipelines.
+- 📡 [REST API Specification](docs/API.md) — Detailed reference of all Gateway and FastAPI REST endpoints.
 - ☁️ [Production Deployment Guide](docs/DEPLOYMENT.md) — Step-by-step guide for Vercel, Render, and Supabase deployment.
 
 ---
