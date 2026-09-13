@@ -19,7 +19,7 @@ def run_interviewer_node(state: TurnState) -> TurnState:
 
 
 def persist_turn_node(state: TurnState) -> TurnState:
-    """Persists conversational turn into Firestore transcript."""
+    """Persists conversational turn into the database transcript."""
     save_turn(state)
     return state
 

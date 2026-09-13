@@ -2,6 +2,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface InterviewContextType {
+  sessionId: string | null;
+  setSessionId: (id: string | null) => void;
   jobDescription: string;
   setJobDescription: (jd: string) => void;
   interviewType: string;
@@ -11,7 +13,7 @@ interface InterviewContextType {
   extractedData: any;
   setExtractedData: (data: any) => void;
   transcript: any[];
-  setTranscript: (transcript: any[]) => void;
+  setTranscript: (transcript: any[] | ((prev: any[]) => any[])) => void;
   feedback: any;
   setFeedback: (feedback: any) => void;
   resetSession: () => void;
@@ -20,6 +22,7 @@ interface InterviewContextType {
 const InterviewContext = createContext<InterviewContextType | undefined>(undefined);
 
 export function InterviewProvider({ children }: { children: ReactNode }) {
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [interviewType, setInterviewType] = useState("technical");
   const [interactionMode, setInteractionMode] = useState<"voice" | "chat">("voice");
@@ -34,6 +37,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
       if (saved) {
         try {
           const p = JSON.parse(saved);
+          setSessionId(p.sessionId || null);
           setJobDescription(p.jobDescription || "");
           setInterviewType(p.interviewType || "technical");
           setInteractionMode(p.interactionMode || "voice");
@@ -48,12 +52,13 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLoaded) {
-      const data = { jobDescription, interviewType, interactionMode, extractedData, transcript, feedback };
+      const data = { sessionId, jobDescription, interviewType, interactionMode, extractedData, transcript, feedback };
       localStorage.setItem("recruitai_data", JSON.stringify(data));
     }
-  }, [jobDescription, interviewType, interactionMode, extractedData, transcript, feedback, isLoaded]);
+  }, [sessionId, jobDescription, interviewType, interactionMode, extractedData, transcript, feedback, isLoaded]);
 
   const resetSession = () => {
+    setSessionId(null);
     setJobDescription("");
     setExtractedData(null);
     setTranscript([]);
@@ -63,6 +68,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
 
   return (
     <InterviewContext.Provider value={{
+      sessionId, setSessionId,
       jobDescription, setJobDescription,
       interviewType, setInterviewType,
       interactionMode, setInteractionMode,

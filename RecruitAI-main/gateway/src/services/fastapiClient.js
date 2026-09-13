@@ -45,8 +45,55 @@ async function uploadResume(sessionId, fileBuffer, originalname) {
   return response.data;
 }
 
+async function processContext(userId, jobDescription, fileBuffer, originalname) {
+  const form = new FormData();
+  form.append("user_id", userId);
+  form.append("job_description", jobDescription || "General Software Engineering");
+  if (fileBuffer) {
+    form.append("file", fileBuffer, { filename: originalname || "resume.pdf" });
+  }
+
+  const headers = form.getHeaders();
+  if (process.env.GCP_SERVICE_AUTH_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.GCP_SERVICE_AUTH_TOKEN}`;
+  }
+
+  const response = await axios.post(`${FASTAPI_BASE_URL}/process-context`, form, {
+    headers,
+    timeout: SERVICE_TIMEOUT_MS,
+  });
+  return response.data;
+}
+
 async function submitAnswer(sessionId, payload) {
   const response = await client.post(`/interview/${encodeURIComponent(sessionId)}/answer`, payload);
+  return response.data;
+}
+
+async function chatNextTurn(payload) {
+  const response = await client.post("/chat/next-turn", payload);
+  return response.data;
+}
+
+async function generateFeedback(payload, sessionId) {
+  const endpoint = sessionId ? `/interview/${encodeURIComponent(sessionId)}/feedback` : "/generate-feedback";
+  const response = await client.post(endpoint, payload);
+  return response.data;
+}
+
+async function getDashboard(userId) {
+  const endpoint = userId ? `/dashboard/${encodeURIComponent(userId)}` : "/dashboard";
+  const response = await client.get(endpoint);
+  return response.data;
+}
+
+async function getProfile(userId) {
+  const response = await client.get(`/profile/${encodeURIComponent(userId)}`);
+  return response.data;
+}
+
+async function updateProfile(userId, profileData) {
+  const response = await client.put(`/profile/${encodeURIComponent(userId)}`, profileData);
   return response.data;
 }
 
@@ -58,7 +105,13 @@ async function checkHealth() {
 module.exports = {
   startInterview,
   uploadResume,
+  processContext,
   submitAnswer,
+  chatNextTurn,
+  generateFeedback,
+  getDashboard,
+  getProfile,
+  updateProfile,
   checkHealth,
   client,
 };

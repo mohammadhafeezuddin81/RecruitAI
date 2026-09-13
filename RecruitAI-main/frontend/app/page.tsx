@@ -1,26 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, SignInButton } from "@clerk/nextjs"; 
-import axios from "axios";
+import { useUser, useAuth, SignInButton } from "@clerk/nextjs"; 
 import { useInterview } from "./context/InterviewContext";
-import { Upload, Briefcase, Settings, MessageSquare, Mic, FileText, Loader2, RotateCcw, ArrowRight, Sparkles, Heart, Cpu } from "lucide-react";
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://127.0.0.1:8000";
+import { apiClient } from "../lib/apiClient";
+import { Upload, Briefcase, Settings, MessageSquare, Mic, FileText, Loader2, RotateCcw, ArrowRight, Sparkles, Cpu } from "lucide-react";
 
 export default function SetupPage() {
   const { user, isLoaded, isSignedIn } = useUser();
+  const { getToken } = useAuth();
   const router = useRouter();
   const { 
     jobDescription, setJobDescription, 
     interviewType, setInterviewType, 
     interactionMode, setInteractionMode, 
-    setExtractedData, resetSession 
+    setExtractedData, setSessionId, resetSession 
   } = useInterview();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState("Idle");
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!isProcessing) resetSession(); }, []); 
 
   // --- 1. LOADING STATE ---
@@ -45,7 +45,7 @@ export default function SetupPage() {
             
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
                 Master Your Next <br />
-                <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                <span className="bg-linear-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
                     Interview with AI
                 </span>
             </h1>
@@ -105,18 +105,24 @@ export default function SetupPage() {
     setIsProcessing(true);
     setStatus(file ? "Analyzing Resume..." : "Loading Standard Questions...");
 
-    const formData = new FormData();
-    formData.append("user_id", user.id); 
-    if (file) formData.append("file", file);
-    formData.append("job_description", jobDescription || "General Software Engineering");
-
     try {
-      const res = await axios.post(`${backendUrl}/process-context`, formData);
-      setExtractedData(res.data);
+      const token = await getToken();
+      apiClient.setToken(token);
+
+      const formData = new FormData();
+      formData.append("user_id", user?.id || "guest"); 
+      if (file) formData.append("file", file);
+      formData.append("job_description", jobDescription || "General Software Engineering");
+
+      const res = await apiClient.processContext(formData);
+      setExtractedData(res);
+      if (res.sessionId) {
+        setSessionId(res.sessionId);
+      }
       router.push("/interview");
     } catch (err) {
       console.error(err);
-      setStatus("Error. Check Backend.");
+      setStatus("Error. Check Gateway & Backend.");
       setIsProcessing(false);
     }
   };
@@ -132,7 +138,7 @@ export default function SetupPage() {
         {/* Header */}
         <header className="text-center relative">
           <h1 className="text-4xl font-bold mb-2">
-            Hello, <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">{user.firstName}</span>
+            Hello, <span className="bg-linear-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">{user.firstName}</span>
           </h1>
           <p className="text-slate-400">Configure your session to start practicing.</p>
           <button onClick={resetSession} className="absolute right-0 top-0 text-xs text-slate-500 hover:text-red-400 flex items-center gap-1 transition-colors">
@@ -243,9 +249,9 @@ export default function SetupPage() {
            {!isProcessing && (
               <div className="text-center">
                   <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-white/10"></div>
-                    <span className="flex-shrink-0 mx-4 text-slate-600 text-xs uppercase tracking-widest">OR</span>
-                    <div className="flex-grow border-t border-white/10"></div>
+                    <div className="grow border-t border-white/10"></div>
+                    <span className="shrink-0 mx-4 text-slate-600 text-xs uppercase tracking-widest">OR</span>
+                    <div className="grow border-t border-white/10"></div>
                   </div>
                   <button 
                     onClick={() => handleContextSubmit(null)}

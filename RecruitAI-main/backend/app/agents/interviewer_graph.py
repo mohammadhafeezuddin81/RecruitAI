@@ -49,7 +49,7 @@ Instructions:
 
 
 def retrieve_candidate_context(state: TurnState) -> dict:
-    """Retrieves session-specific resume and JD context via Chroma vector store."""
+    """Retrieves session-specific resume and JD context via pgvector store."""
     session_id = state.get("session_id", "")
     query = state.get("latest_user_turn", "") or state.get("job_description", "")
 

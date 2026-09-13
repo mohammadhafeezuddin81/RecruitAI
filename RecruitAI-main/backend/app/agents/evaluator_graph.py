@@ -39,13 +39,27 @@ Instructions:
 
 def retrieve_rubric_context(state: TurnState) -> dict:
     """Retrieves standard role-based scoring rubric chunks from the vector store."""
+    jd = state.get("job_description", "").lower()
+    role_category = "general"
+    if any(k in jd for k in ["engineer", "developer", "backend", "frontend", "fullstack", "software", "architect", "python", "react"]):
+        role_category = "software_engineering"
+    elif any(k in jd for k in ["hr", "behavioral", "manager", "culture"]):
+        role_category = "behavioral"
+
+    fallback_rubric = (
+        "Core Evaluation Criteria:\n"
+        "- Technical Competency & Depth (0-100): Depth of domain knowledge, system architecture, trade-off analysis.\n"
+        "- Communication & Clarity (0-100): Structured responses, concise articulation, active listening.\n"
+        "- Problem Solving & Judgement (0-100): Breaking down problems, reasoning under ambiguity, handling edge cases."
+    )
+
     try:
-        retriever = get_rubric_retriever(role_category="general", k=4)
+        retriever = get_rubric_retriever(role_category=role_category, k=4)
         docs = retriever.invoke(state.get("job_description", "Software Engineer"))
         rubric_str = "\n".join([d.page_content for d in docs])
-        return {"rubric_context": rubric_str or "Standard technical interview rubric."}
+        return {"rubric_context": rubric_str or fallback_rubric}
     except Exception:
-        return {"rubric_context": "Standard technical evaluation rubric."}
+        return {"rubric_context": fallback_rubric}
 
 
 def evaluate_session(state: TurnState) -> dict:

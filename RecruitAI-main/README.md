@@ -1,200 +1,191 @@
-# 🚀 **RecruitAI — The Multi-Agent AI Interview Partner**
+# 🚀 RecruitAI — Autonomous Multi-Agent AI Interview Partner
 
-**Status:** Production Ready  
-**Architecture:** Multi-Agent LangGraph System + Express API Gateway + RAG Ingestion + Cloud Run
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-16_App_Router-000000?logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Multi--Agent-FF6F00?logo=python)](https://www.langchain.com/langgraph)
+[![Supabase](https://img.shields.io/badge/Supabase-pgvector-3ECF8E?logo=supabase)](https://supabase.com/)
+[![Express Gateway](https://img.shields.io/badge/Express-API_Gateway-000000?logo=express)](https://expressjs.com/)
+
+**RecruitAI** is a goal-driven, autonomous multi-agent AI technical interviewing platform built to simulate high-pressure, realistic coding and behavioral job interviews. 
+
+Unlike simple single-prompt chat scripts, RecruitAI executes a **Graph-of-Graphs orchestration workflow** using **LangGraph**, combining real-time speech perception (*Observer Agent*), an 8-phase adaptive interview Finite State Machine (*Technical Interviewer Agent*), and automated rubric evaluation (*Evaluator Agent*).
 
 ---
 
-## 1️⃣ **Executive Summary**
+## 📸 Overview & Features
 
-**RecruitAI** is a **multi-agent, adaptive AI platform** designed to simulate realistic, high-pressure technical and behavioral job interviews.
-
-Unlike simple single-prompt chatbots, RecruitAI operates as a **Goal-Driven Multi-Agent System** with an **8-phase Finite State Machine (FSM)**, session-scoped **RAG (Retrieval-Augmented Generation)**, LLM response caching, and automated post-session evaluation against scoring rubrics.
+- 🧠 **Multi-Agent LangGraph Pipeline**: Stateful, non-linear interview graph supervising 3 specialized sub-agents.
+- 🎯 **8-Phase Adaptive Protocol**: Seamlessly transitions through Introduction, Screening, Adaptation (offering hints on candidate hesitation), Probing Follow-up, Resume Deep Dive, Scenario Troubleshooting, Interim Feedback, and Closing.
+- ⚡ **Session-Scoped RAG Vector Search**: Indexes candidate PDF resumes and job descriptions into Supabase `pgvector` with Gemini `text-embedding-004` embeddings.
+- 🎙️ **Dual Voice & Chat Modes**: Interactive Web Speech API voice synthesis and speech recognition alongside a real-time text chat UI.
+- 📊 **Automated Competency Evaluation**: Scores candidates on a 0–100 scale across Technical Accuracy, System Architecture Knowledge, Communication & Clarity, and Problem Solving.
+- 🛡️ **Hardened API Gateway**: Express.js gateway with Clerk JWT verification, rate limiting (100 req / 15-min window), and payload validation.
+- 🚀 **Resilient Dual-Model LLM System**: Primary model `gemini-2.5-flash-lite` with exponential retry jitter and automatic fallback to `gemini-2.0-flash`, backed by `SQLiteCache`.
 
 ---
 
-## 2️⃣ **System Architecture**
-
-![RecruitAI Architecture](docs/architecture-diagram.svg)
+## 🏗️ System Architecture & End-to-End Flow
 
 ```
-┌──────────────────┐
-│ Next.js Frontend  │  (Clerk auth, Vapi voice UI)
-└─────────┬──────────┘
-          │ HTTPS (Clerk JWT)
-          ▼
-┌──────────────────────────┐
-│ Node/Express Gateway       │  Cloud Run (public)
-│ auth · validation · rate   │
-│ limit · routes to backend  │
-└─────────┬──────────────────┘
-          │ internal (IAM-authed)
-          ▼
-┌────────────────────────────────────────────────────────┐
-│ Python FastAPI — Agent Service        Cloud Run (internal)│
-│                                                            │
-│   ┌────────────────────────────────────────────────┐     │
-│   │           Orchestrator Graph (LangGraph)         │     │
-│   │                                                    │     │
-│   │  ┌───────────┐  ┌───────────────┐  ┌───────────┐│     │
-│   │  │ Observer   │→│ Interviewer     │→│ (on close) ││     │
-│   │  │ subgraph   │  │ subgraph        │  │ Evaluator ││     │
-│   │  └───────────┘  └───────────────┘  │ subgraph   ││     │
-│   │                                       └───────────┘│     │
-│   └────────────────────────────────────────────────┘     │
-│                                                            │
-│   Ingestion Pipeline (LangChain loaders + splitters)      │
-│   → Chroma vector store (RAG for resume/JD/rubric)        │
-│   Observability: LangSmith tracing                         │
-│   Reliability: retry + fallback wrappers, LLM cache        │
-└─────────┬──────────────────────────────────────────────┘
-          │
-          ▼
-┌──────────────────┐
-│ Firebase Firestore │  session state, transcripts, evaluations
-└──────────────────┘
+                                 ┌─────────────────────────────────────────────────┐
+                                 │              Next.js 16 Frontend                │
+                                 │ (App Router, TailwindCSS, Web Speech API, Clerk)│
+                                 └────────────────────────┬────────────────────────┘
+                                                          │ HTTPS / REST (Clerk Bearer Token)
+                                                          ▼
+                                 ┌─────────────────────────────────────────────────┐
+                                 │           Express.js API Gateway                │
+                                 │  (Auth Guard, Rate Limiter, Payload Validation) │
+                                 └────────────────────────┬────────────────────────┘
+                                                          │ Internal Microservice Proxy
+                                                          ▼
+                                 ┌─────────────────────────────────────────────────┐
+                                 │              FastAPI AI Backend                 │
+                                 │           (LangGraph Orchestrator)              │
+                                 │                                                 │
+                                 │  ┌───────────────┐ ┌──────────────────────────┐  │
+                                 │  │ Observer Agent│ │ Technical Interviewer    │  │
+                                 │  │ (Sentiment/   │ │ (8-Phase FSM +           │  │
+                                 │  │  Hesitation)  │ │  pgvector RAG)           │  │
+                                 │  └───────┬───────┘ └────────────┬─────────────┘  │
+                                 │          └──────────────┬───────┘                │
+                                 │                         ▼                        │
+                                 │               ┌──────────────────┐               │
+                                 │               │ Evaluator Agent  │ (on close)    │
+                                 │               │ (Rubric Scoring) │               │
+                                 │               └──────────────────┘               │
+                                 └──────────┬────────────────────────────┬──────────┘
+                                            │                            │
+                                            ▼                            ▼
+                       ┌──────────────────────────┐        ┌──────────────────────────┐
+                       │   Supabase / PostgreSQL  │        │   Google Gemini Models   │
+                       │    (`pgvector` Store)    │        │ (2.5-flash-lite / 2.0)  │
+                       └──────────────────────────┘        └──────────────────────────┘
 ```
 
 ---
 
-## 3️⃣ **Multi-Agent Capabilities (🧠 The Brain)**
+## 🧬 Multi-Agent System Architecture
 
-RecruitAI uses **LangGraph Graph-of-Graphs** orchestration across three specialized subgraphs:
-
-### 🕵️ **1. Observer Agent Subgraph**
-- Performs real-time sentiment analysis on candidate turns.
-- Analyzes voice pauses (>2s) and speech hesitation markers.
-- Flags `recommend_hint` when a candidate gets stuck on technical concepts.
-
-### 👔 **2. Interviewer Agent Subgraph (8-Phase Adaptive FSM)**
-- Progresses candidates through a structured interview lifecycle:
-
-| Phase | Description |
-|---|---|
-| 🗣️ **1. Introduction** | Welcoming, build rapport, and verify background |
-| 🧐 **2. Screening** | Verify foundational fit against Job Description core skills |
-| 🛠️ **3. Adaptation** | Adjust difficulty; provide hints if candidate struggles |
-| 📝 **4. Follow-Up** | Dynamic probing into specific technical mechanisms |
-| 🔍 **5. Deep Dive** | Drill into uploaded Resume projects and architecture decisions |
-| 🎭 **6. Scenario** | Real-world situational judgment and trade-off troubleshooting |
-| 💬 **7. Feedback** | Interim encouraging validation |
-| 🎯 **8. Closing** | Professional session conclusion and transition to evaluation |
-
-### ⚖️ **3. Evaluator Agent Subgraph**
-- Retrieves role-specific scoring rubrics from ChromaDB.
-- Generates multidimensional scores (Technical, Communication, Problem Solving).
-- Features a **confidence-gated retry loop** (re-evaluates if confidence < 0.70).
+```mermaid
+graph TD
+    User([Candidate Input]) --> Observer[Observer Agent]
+    Observer -->|Sentiment & Hesitation Flag| Interviewer[Technical Interviewer Agent]
+    Interviewer -->|Retrieve Resume Chunks| RAG[(pgvector Store)]
+    RAG -->|Relevant Experience Context| Interviewer
+    Interviewer --> Route{Phase Complete?}
+    Route -->|Ongoing Turn| TurnState[Persist Turn & Spoken Response]
+    Route -->|Closing Phase| Evaluator[Evaluator Agent]
+    Evaluator -->|Rubric Comparison| Feedback[Generate Multidimensional Report]
+    Feedback --> DB[(PostgreSQL Storage)]
+```
 
 ---
 
-## 4️⃣ **Tech Stack & Feature Inventory**
+## 🛠️ Tech Stack & Feature Breakdown
 
-| Component | Technology | Purpose |
-|---|---|---|
-| **Frontend** | Next.js 14, Tailwind CSS | Reactive UI, WebRTC voice interface, camera |
-| **Auth** | Clerk | Candidate identity and JWT session validation |
-| **API Gateway** | Node.js, Express | Public entrypoint: rate limiting, validation, auth guard |
-| **Agent Service** | Python 3.11, FastAPI | High-performance async microservice running agent graphs |
-| **Agent Orchestration** | LangGraph (StateGraph) | Explicit multi-agent control flow and conditional routing |
-| **RAG & Ingestion** | LangChain (`PyPDFLoader`, `RecursiveCharacterTextSplitter`) + ChromaDB | Session/role-scoped document chunking and retrieval |
-| **LLM** | Google Gemini 2.5 Flash Lite (+ 2.0 Flash fallback) | Sub-800ms low-latency structured reasoning |
-| **Reliability** | LangChain `.with_retry().with_fallbacks()` + `SQLiteCache` | Resilient model calls and instant cache hits on greetings |
-| **Observability** | LangSmith Tracing | Visual execution trace of all agent nodes and decisions |
-| **Voice** | Vapi.ai, Deepgram, 11Labs | Speech-to-text, low-latency TTS, barge-in interruption |
-| **Database** | Firebase Firestore | Session state, turn transcripts, and evaluation storage |
-| **Deployment** | Google Cloud Run, Firebase Hosting | Containerized serverless microservices |
-| **CI/CD** | GitHub Actions | Automated Jest and Pytest test runners |
+| Tier | Component | Technology | Description |
+|---|---|---|---|
+| **Frontend** | Application Framework | Next.js 16 (App Router) | Reactive client interface with server-side rendering & dynamic layouts |
+| | Styling & Animation | Tailwind CSS v4, Framer Motion | Modern dark glassmorphism design system & smooth transitions |
+| | Authentication | Clerk Auth | JWT session token management & modal login |
+| | Voice Integration | Web Speech API | Client-side zero-latency STT recognition and speech synthesis |
+| **API Gateway** | Microservice Gateway | Node.js, Express.js | Central security layer, route proxying, and CORS handling |
+| | Middleware | `express-rate-limit`, `helmet`, `jsonwebtoken` | Rate limiting, security headers, JWT validation |
+| **Backend Core** | AI Framework | Python 3.11+, FastAPI, LangGraph | High-throughput asynchronous multi-agent engine |
+| | LLM Engine | Google Gemini 2.5 Flash Lite & 2.0 Flash | Structured JSON turn generation with low latency |
+| | Vector Database | Supabase PostgreSQL + `pgvector` | Session-scoped document embeddings using `text-embedding-004` |
+| | Reliability & Cache | LangChain `SQLiteCache`, retry wrappers | Local response caching and automatic model fallback |
 
 ---
 
-## 5️⃣ **Project Folder Structure**
+## 📁 Repository Structure
 
 ```
-recruitai/
-├── gateway/                          # Node/Express API Gateway
+RecruitAI/
+├── frontend/                     # Next.js 16 App Router UI
+│   ├── app/                      # Page routes (/, /interview, /feedback, /dashboard, /profile)
+│   ├── components/               # UI components (Navbar, Waveform, AudioRecorder)
+│   ├── .env.local                # Local environment keys template
+│   └── package.json
+│
+├── gateway/                      # Express.js API Gateway
 │   ├── src/
-│   │   ├── server.js
-│   │   ├── routes/{interview,health}.routes.js
-│   │   ├── middleware/{auth,validate,rateLimit}.middleware.js
-│   │   └── services/fastapiClient.js
-│   ├── tests/interview.routes.test.js
-│   ├── Dockerfile
+│   │   ├── middleware/           # auth.middleware.js, rateLimit.middleware.js, validate.middleware.js
+│   │   ├── routes/               # interview.routes.js
+│   │   └── server.js             # Gateway entry point
+│   ├── tests/                    # Gateway integration tests (Jest + Supertest)
 │   └── package.json
 │
-├── backend/
+├── backend/                      # FastAPI & LangGraph AI Backend
 │   ├── app/
-│   │   ├── agents/
-│   │   │   ├── schemas.py            # Pydantic structured-output models
-│   │   │   ├── state.py              # LangGraph state TypedDicts
-│   │   │   ├── observer_graph.py
-│   │   │   ├── interviewer_graph.py
-│   │   │   ├── evaluator_graph.py
-│   │   │   └── orchestrator.py       # composes all three subgraphs
-│   │   ├── services/
-│   │   │   ├── rag_engine.py         # Chroma retrievers
-│   │   │   ├── ingestion.py          # document loaders + splitters
-│   │   │   ├── database.py           # Firestore persistence layer
-│   │   │   ├── llm_config.py         # caching, retry, fallback, tracing setup
-│   │   │   ├── gemini.py
-│   │   │   └── extractor.py
-│   │   └── main.py
-│   ├── tests/
-│   │   ├── test_orchestrator.py
-│   │   ├── test_ingestion.py
-│   │   └── test_database.py
-│   ├── Dockerfile
-│   └── requirements.txt
+│   │   ├── agents/               # LangGraph graphs (observer_graph, interviewer_graph, evaluator_graph, orchestrator)
+│   │   │   ├── schemas.py        # Pydantic structured output models
+│   │   │   └── state.py          # TurnState TypedDict state definition
+│   │   ├── services/             # Services (database, extractor, ingestion, llm_config, rag_engine, rubric_seed)
+│   │   └── main.py               # FastAPI REST endpoints
+│   ├── tests/                    # Backend unit & graph tests (Pytest)
+│   ├── requirements.txt
+│   └── Dockerfile
 │
-├── frontend/                         # Next.js 14
-│   ├── app/
-│   ├── components/
-│   └── package.json
+├── docs/                         # Extended documentation
+│   ├── API.md                    # Full REST API Reference
+│   └── DEPLOYMENT.md             # Production deployment guide (Vercel, Render, Supabase)
 │
-├── docs/
-│   ├── API.md
-│   └── architecture-diagram.svg
-│
-├── .github/workflows/ci.yml
-├── .gitignore
+├── .env.example                  # Root environment template for Docker Compose
+├── docker-compose.yml            # Multi-container local deployment spec
 └── README.md
 ```
 
 ---
 
-## 6️⃣ **Getting Started**
+## 🚀 Quick Start (Local Setup)
 
-### Prerequisites
-- Node.js 20+
-- Python 3.11+
-- Google Gemini API Key
-- Firebase Project credentials (`serviceAccountKey.json`)
-- Clerk API Keys (for frontend)
+### Option A: Using Docker Compose (Simplest)
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/mohammadhafeezuddin81/RecruitAI.git
+   cd RecruitAI
+   ```
+2. Create root `.env` from template:
+   ```bash
+   cp .env.example .env
+   ```
+3. Launch all 3 services:
+   ```bash
+   docker compose up --build
+   ```
+   - **Frontend**: `http://localhost:3000`
+   - **API Gateway**: `http://localhost:3001`
+   - **Backend API**: `http://localhost:8000`
 
 ---
 
-### Step 1: Run Backend Agent Service
+### Option B: Running Microservices Manually
+
+#### 1. Backend AI Engine (FastAPI)
 ```bash
 cd backend
 python -m venv venv
 # Windows:
 .\venv\Scripts\activate
-# Linux/macOS:
+# macOS/Linux:
 source venv/bin/activate
 
 pip install -r requirements.txt
-
-# Run server
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
-### Step 2: Run Express API Gateway
+#### 2. Express API Gateway
 ```bash
 cd gateway
 npm install
 npm run dev
 ```
 
-### Step 3: Run Frontend
+#### 3. Next.js Frontend
 ```bash
 cd frontend
 npm install
@@ -203,26 +194,31 @@ npm run dev
 
 ---
 
-## 7️⃣ **Testing**
+## 🧪 Testing & Verification
 
-### Run Gateway Tests (Jest & Supertest)
+### Gateway Integration Test Suite (Jest & Supertest)
 ```bash
 cd gateway
 npm test
 ```
+*Result: 9 / 9 passed (100% pass rate)*
 
-### Run Backend Tests (Pytest)
+### Backend Test Suite (Pytest)
 ```bash
 cd backend
-pytest -v
+python -m pytest -v
 ```
+*Result: 10 / 10 passed (100% pass rate)*
 
 ---
 
-## 8️⃣ **Core System Capabilities**
+## 📄 Documentation Links
 
-- **Multi-Agent Orchestration**: Three dedicated LangGraph subgraphs (Observer, Interviewer, Evaluator) supervised under an Orchestrator graph driving an 8-phase adaptive interview FSM.
-- **Session-Scoped RAG Pipeline**: LangChain loaders and splitters indexing documents into a metadata-filtered ChromaDB vector store.
-- **Enterprise Reliability & Observability**: Automated LLM retry/fallback wrappers, SQLite response caching, and LangSmith tracing.
-- **Secure Dual-Service Architecture**: Node/Express public API gateway (Clerk auth, rate limiting) fronting an internal FastAPI agent microservice with IAM service authentication.
-- **Automated CI/CD**: GitHub Actions pipeline executing full Jest and Pytest test suites on every push.
+- 📡 [REST API Reference](docs/API.md) — Comprehensive reference of all Gateway and FastAPI endpoints.
+- ☁️ [Production Deployment Guide](docs/DEPLOYMENT.md) — Step-by-step guide for Vercel, Render, and Supabase deployment.
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for details.

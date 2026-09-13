@@ -1,0 +1,47 @@
+services:
+  # 1. FastAPI Multi-Agent Brain
+  - type: web
+    name: recruitai-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: DATABASE_URL
+        sync: false # Set to Supabase Postgres URL (postgresql://postgres:password@db.xxx.supabase.co:5432/postgres)
+      - key: GOOGLE_API_KEY
+        sync: false # Google Gemini API Key
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGCHAIN_TRACING_V2
+        value: "false"
+
+  # 2. Node/Express API Gateway (Auth & Rate Limiter)
+  - type: web
+    name: recruitai-gateway
+    runtime: docker
+    dockerfilePath: ./gateway/Dockerfile
+    dockerContext: ./gateway
+    region: oregon
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: FASTAPI_BASE_URL
+        fromService:
+          type: web
+          name: recruitai-backend
+          property: host
+      - key: FASTAPI_TIMEOUT_MS
+        value: "60000"
+      - key: CLERK_JWT_ISSUER
+        sync: false # e.g. https://clerk.your-domain.com or https://your-clerk-app.clerk.accounts.dev

@@ -1,206 +1,117 @@
-# ☁️ RecruitAI — Cloud Deployment Guide
+# 🚀 RecruitAI — Production Deployment Guide
 
-RecruitAI is architected as a **cloud-native, serverless multi-service platform** deployed across **Google Cloud Run** and **Firebase**.
-
----
-
-## 🏗️ Deployment Topology
-
-```
-┌───────────────────────────────────────┐
-│     Firebase Hosting / Vercel         │  (Frontend: Next.js 14)
-└──────────────────┬────────────────────┘
-                   │ HTTPS (Clerk JWT)
-                   ▼
-┌───────────────────────────────────────┐
-│   Google Cloud Run — Public Service    │  (recruitai-gateway)
-│   (Node/Express API Gateway)          │  --allow-unauthenticated
-└──────────────────┬────────────────────┘
-                   │ Internal VPC / IAM Service Token
-                   ▼
-┌───────────────────────────────────────┐
-│   Google Cloud Run — Internal Service │  (recruitai-backend)
-│   (Python FastAPI Agent Service)      │  --no-allow-unauthenticated
-└──────────────────┬────────────────────┘
-                   │
-                   ▼
-┌───────────────────────────────────────┐
-│          Firebase Firestore           │  (Session Persistence & Transcripts)
-└───────────────────────────────────────┘
-```
+RecruitAI is architected as a **cloud-native, high-performance platform** powered by:
+- **Frontend**: [Vercel](https://vercel.com/) (Next.js)
+- **API Gateway & Backend**: [Render](https://render.com/) (Express.js Gateway + FastAPI Multi-Agent Brain)
+- **Database & Vector Store**: [Supabase](https://supabase.com/) (PostgreSQL + `pgvector`)
 
 ---
 
-## 📋 Prerequisites
+## 🏗️ Architecture Topology
 
-1. **Google Cloud SDK (`gcloud`)** installed and authenticated:
-   ```bash
-   gcloud auth login
-   gcloud config set project YOUR_GCP_PROJECT_ID
+```
+┌─────────────────────────────────────────┐
+│              Vercel Edge                │  (Frontend: Next.js 16)
+│       recruitai-frontend.vercel.app     │
+└────────────────────┬────────────────────┘
+                     │ HTTPS (Clerk Bearer JWT)
+                     ▼
+┌─────────────────────────────────────────┐
+│             Render Web Service          │  (recruitai-gateway)
+│         (Node/Express API Gateway)      │  Port 3001: Auth Guard & Rate Limiter
+└────────────────────┬────────────────────┘
+                     │ Internal Private URL / Service-to-Service
+                     ▼
+┌─────────────────────────────────────────┐
+│             Render Web Service          │  (recruitai-backend)
+│       (FastAPI + LangGraph Orchestrator)│  Port 8000: Observer, Interviewer, Evaluator
+└────────────────────┬────────────────────┘
+                     │ SQL & Vector Distance Search
+                     ▼
+┌─────────────────────────────────────────┐
+│        Supabase (Managed PostgreSQL)    │
+│  ├── PostgreSQL (Sessions & Profiles)   │
+│  └── pgvector (Resume & Rubric Vectors) │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## 📋 Step 1: Set Up Supabase (PostgreSQL + pgvector)
+
+1. Create a free account at [supabase.com](https://supabase.com) and create a **New Project**.
+2. Go to **Project Settings** -> **Database**.
+3. Under **Connection String**, select **URI** and copy the string:
    ```
-2. **Enable Required GCP APIs**:
-   ```bash
-   gcloud services enable \
-     run.googleapis.com \
-     secretmanager.googleapis.com \
-     artifactregistry.googleapis.com \
-     cloudbuild.googleapis.com
+   postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres
    ```
-3. **Firebase CLI**:
-   ```bash
-   npm install -g firebase-tools
-   firebase login
+   *(or direct port 5432: `postgresql://postgres:[YOUR-PASSWORD]@db.[ref].supabase.co:5432/postgres`)*
+4. Go to **SQL Editor** in Supabase and enable `pgvector` (the backend also self-provisions this automatically on boot):
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS vector;
    ```
 
 ---
 
-## 🔐 Step 1: Configure Secrets in GCP Secret Manager
+## 🚀 Step 2: Deploy Backend & Gateway to Render
 
-Never store raw API keys in environment variables on Cloud Run. Create secrets in GCP Secret Manager:
+RecruitAI includes a 1-click Infrastructure-as-Code blueprint file: [render.yaml](file:///c:/Users/moham/Downloads/RecruitAI/RecruitAI-main/render.yaml).
 
-```bash
-# Gemini API Key
-echo -n "YOUR_ACTUAL_GEMINI_API_KEY" | gcloud secrets create gemini-api-key --data-file=-
-
-# LangSmith API Key
-echo -n "YOUR_ACTUAL_LANGSMITH_KEY" | gcloud secrets create langsmith-api-key --data-file=-
-
-# Clerk Secret Key
-echo -n "YOUR_ACTUAL_CLERK_SECRET" | gcloud secrets create clerk-secret-key --data-file=-
-```
-
----
-
-## ⚡ Step 2: Deploy Python FastAPI Agent Service (Internal Cloud Run)
-
-The agent service runs internally without public access. Only authorized services (like the Gateway) can invoke it.
-
-```bash
-cd backend
-
-# Deploy to Cloud Run as an internal service
-gcloud run deploy recruitai-backend \
-  --source . \
-  --region us-central1 \
-  --no-allow-unauthenticated \
-  --memory 2Gi \
-  --cpu 2 \
-  --timeout 300 \
-  --set-secrets GOOGLE_API_KEY=gemini-api-key:latest,LANGCHAIN_API_KEY=langsmith-api-key:latest \
-  --set-env-vars LANGCHAIN_TRACING_V2=true,LANGCHAIN_PROJECT=recruitai-production
-```
-
-After deployment, copy the generated **Service URL** (e.g., `https://recruitai-backend-xyz.a.run.app`).
-
----
-
-## 🛡️ Step 3: Deploy Express API Gateway (Public Cloud Run)
-
-The gateway receives public traffic from the frontend, validates Clerk auth tokens, applies rate limits, and proxies requests to the internal backend.
-
-```bash
-cd ../gateway
-
-# Deploy to Cloud Run as a public gateway
-gcloud run deploy recruitai-gateway \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --memory 512Mi \
-  --cpu 1 \
-  --set-env-vars FASTAPI_BASE_URL=https://recruitai-backend-xyz.a.run.app,CLERK_JWT_ISSUER=https://clerk.your-domain.com
-```
-
-### Grant Gateway Permission to Invoke Internal Backend:
-```bash
-# Get gateway default compute service account
-GATEWAY_SA=$(gcloud run services describe recruitai-gateway --region us-central1 --format='value(spec.template.spec.serviceAccountName)')
-
-# Grant Cloud Run Invoker role on the backend service
-gcloud run services add-iam-policy-binding recruitai-backend \
-  --region us-central1 \
-  --member="serviceAccount:${GATEWAY_SA}" \
-  --role="roles/run.invoker"
-```
-
-After deployment, copy the public **Gateway URL** (e.g., `https://recruitai-gateway-xyz.a.run.app`).
-
----
-
-## 🎨 Step 4: Deploy Next.js Frontend
-
-### Option A: Deploy on Vercel (Fastest & Recommended for Next.js)
 1. Push your repository to GitHub.
-2. Go to **[vercel.com](https://vercel.com)** → Add New Project → Select `RecruitAI` repo with Root Directory set to `frontend`.
-3. Add Environment Variables:
-   - `NEXT_PUBLIC_API_URL` = `https://recruitai-gateway-xyz.a.run.app`
-   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` = your Clerk publishable key
-   - `CLERK_SECRET_KEY` = your Clerk secret key
-   - `NEXT_PUBLIC_VAPI_PUBLIC_KEY` = your Vapi key
-   - `NEXT_PUBLIC_VAPI_ASSISTANT_ID` = your Vapi assistant ID
-4. Click **Deploy**.
+2. Sign in to [dashboard.render.com](https://dashboard.render.com/).
+3. Click **New +** -> **Blueprint**.
+4. Select your **RecruitAI** GitHub repository.
+5. Render will automatically detect `render.yaml` and configure two connected web services:
+   - `recruitai-backend` (Docker container)
+   - `recruitai-gateway` (Docker container)
+6. Fill in the required environment variables:
+   - `DATABASE_URL`: Your Supabase connection string from Step 1.
+   - `GOOGLE_API_KEY`: Your Google Gemini API Key from [aistudio.google.com](https://aistudio.google.com).
+   - `CLERK_JWT_ISSUER`: Your Clerk Issuer URL (e.g. `https://your-instance.clerk.accounts.dev`).
+7. Click **Apply**.
+8. Once deployed, copy your Gateway service URL:
+   `https://recruitai-gateway.onrender.com`
 
 ---
 
-### Option B: Deploy on Firebase Hosting
-```bash
-cd ../frontend
+## ⚡ Step 3: Deploy Frontend to Vercel
 
-# Initialize Firebase Hosting
-firebase init hosting
+1. Sign in to [vercel.com](https://vercel.com) and click **Add New...** -> **Project**.
+2. Select your **RecruitAI** repository.
+3. Configure the project:
+   - **Framework Preset**: Next.js
+   - **Root Directory**: `frontend`
+4. Add the following **Environment Variables**:
 
-# Build production Next.js bundle
-npm run build
+| Variable | Value | Description |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `https://recruitai-gateway.onrender.com` | Public URL of your Render Express Gateway |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_live_...` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | `sk_live_...` | Clerk secret key |
+| `NEXT_PUBLIC_VAPI_PUBLIC_KEY` | *(optional)* | Vapi Public Key if using voice mode |
+| `NEXT_PUBLIC_VAPI_ASSISTANT_ID` | *(optional)* | Vapi Assistant ID |
 
-# Deploy to Firebase Hosting
-firebase deploy --only hosting
-```
-
----
-
-## 🔄 Step 5: Automated Cloud Run Deployment via GitHub Actions (Optional CI/CD)
-
-You can add automated deployment to `.github/workflows/deploy.yml` using Google Service Account credentials:
-
-```yaml
-name: Deploy to Cloud Run
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Deploy Backend
-        run: |
-          gcloud run deploy recruitai-backend --source ./backend --region us-central1
-
-      - name: Deploy Gateway
-        run: |
-          gcloud run deploy recruitai-gateway --source ./gateway --region us-central1
-```
+5. Click **Deploy**. Your frontend is live with edge acceleration!
 
 ---
 
-## 🩺 Step 6: Post-Deployment Verification
+## 💻 Local Development with Docker Compose
 
-1. **Verify Gateway Health**:
-   ```bash
-   curl https://recruitai-gateway-xyz.a.run.app/health
-   # Expected response: {"status":"ok","gateway":"RecruitAI Gateway",...}
+You can spin up the exact same stack locally (including a local PostgreSQL container with `pgvector`):
+
+1. Create a `.env` file in the repository root:
+   ```env
+   GOOGLE_API_KEY=AIzaSy...
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+   CLERK_SECRET_KEY=sk_test_...
+   CLERK_JWT_ISSUER=https://your-instance.clerk.accounts.dev
    ```
-
-2. **Verify End-to-End Connectivity**:
+2. Start all 4 services:
    ```bash
-   curl https://recruitai-gateway-xyz.a.run.app/health/ready
-   # Expected response: {"status":"ready","gateway":"ok","backend":{"status":"ok"}}
+   docker compose up --build
    ```
+3. Access endpoints:
+   - Frontend: `http://localhost:3000`
+   - API Gateway: `http://localhost:3001`
+   - Agent Backend: `http://localhost:8000`
+   - PostgreSQL (pgvector): `localhost:5432`

@@ -1,14 +1,15 @@
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.globals import set_llm_cache
+from langchain_core.globals import set_llm_cache
 from langchain_community.cache import SQLiteCache
 
 # --- 1. Caching: repeated rubric/greeting-phase calls hit cache instead of the API ---
 try:
     set_llm_cache(SQLiteCache(database_path=".langchain_cache.db"))
-except Exception as e:
+except Exception:
     # Gracefully handle cache initialization if filesystem permissions or locks occur
-    pass
+    import logging
+    logging.getLogger("recruitai.llm_config").debug("LLM cache init skipped (non-critical)")
 
 # --- 2. Observability: LangSmith tracing for every chain/graph run ---
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
