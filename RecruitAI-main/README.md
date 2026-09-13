@@ -15,6 +15,8 @@ Unlike simple single-prompt chat scripts, RecruitAI executes a **Graph-of-Graphs
 
 ## 🏛️ High-Level System Architecture (HLD)
 
+![RecruitAI High-Level Architecture](docs/architecture-diagram.png)
+
 ```
 ====================================================================================================
                                RECRUITAI HIGH-LEVEL ARCHITECTURE (HLD)
