@@ -6,7 +6,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     region: oregon
-    plan: starter
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: PORT
@@ -29,7 +29,7 @@ services:
     dockerfilePath: ./gateway/Dockerfile
     dockerContext: ./gateway
     region: oregon
-    plan: starter
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: PORT
